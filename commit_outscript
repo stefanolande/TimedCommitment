@@ -1,0 +1,53 @@
+//input
+X
+SIGMA_BOB
+SIGMA_ALICE
+
+------------------------
+//metto gli elementi nell'ordine (dall'alto) SIGMA1 SIGMA2 X
+//non necessario cambiando l'ordine
+//2
+//OP_ROLL
+//2
+//OP_ROLL
+-----------------------
+
+//sposto le due firme nell'altstack
+OP_TOALTSTACK	
+OP_TOALTSTACK	
+
+------------------------
+//controllo che il segreto sia giusto
+OP_SHA256	
+SECRET_HASH
+OP_EQUAL
+
+
+//copio la firma di alice dall'altstack
+OP_FROMALTSTACK
+OP_DUP
+OP_TOALTSTACK
+
+//controllo la firma di alice
+ALICE_PUBKEY
+OP_CHECKSIG
+
+//sia segreto che firma devono essere verificati
+OP_AND
+
+---------------------------
+//sposto dall'altstack e controllo la firma di alice
+OP_FROMALTSTACK
+ALICE_PUBKEY
+OP_CHECKSIG
+
+//sposto dall'altstack e controllo la firma di bob
+OP_FROMALTSTACK
+BOB_PUBKEY
+OP_CHECKSIG
+
+//entrambe le firme devono essere verificate
+OP_AND
+
+--------------------------
+OP_OR
