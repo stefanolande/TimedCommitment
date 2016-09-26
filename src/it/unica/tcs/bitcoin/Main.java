@@ -6,12 +6,10 @@ import org.bitcoinj.core.*;
 import org.bitcoinj.core.listeners.NewBestBlockListener;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
-import org.bitcoinj.script.Script;
-import org.bitcoinj.wallet.SendRequest;
 import org.bitcoinj.wallet.Wallet;
 
 import java.io.File;
-import java.io.IOException;
+import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 
 
@@ -33,14 +31,12 @@ public class Main {
     private static final String BOB_PUB_KEY = "mt42ndxahKY5jMdewFLZgxkQWezGU8ydSB";
     private static final String BOB_PRIV_KEY = "cReM8pbW7HKT4sgNFyDMSU88tKh6cSghdDUuRXgxY2kqWxPW2C1s";
 
-    private static final String SECRET = "1";
-
-
-
 
     public static void main(String[] args) {
 
-        TimedCommitter cm = new TimedCommitter();
+        String secret;
+
+        Scanner keyboard = new Scanner(System.in);
 
         NetworkParameters params = RegTestParams.get();
         String filePrefix = "forwarding-service-regtest";
@@ -60,7 +56,7 @@ public class Main {
                 // can do disk and network IO that may cause UI jank/stuttering in wallet apps if it were to be done
                 // on the main thread.
                 wallet().importKey(aliceKey);
-                System.out.println(wallet().getKeyChainGroupSize());
+                //System.out.println(wallet().getKeyChainGroupSize());
             }
         };
 
@@ -72,62 +68,47 @@ public class Main {
         kit.awaitRunning();
 
 
-        System.out.println("connesso!");
+        System.out.println("Connected!");
+        System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
 
-        listenForNewTransactions(kit);
+        while (true) {
 
-        System.out.println("Bilancio: " + kit.wallet().getBalance().toFriendlyString());
-        //standardSend(kit, params);
+            System.out.println("\nEnter the secret");
+            secret = keyboard.nextInt() + "";
 
-        //Create the commit transaction
-        Transaction commitTx = new Transaction(params);
-        Coin deposit = Coin.valueOf(1, 5);
-        Script commitOutScript = cm.getCommitOutScript(SECRET, aliceKey, bobKey);
-        commitTx.addOutput(deposit, commitOutScript);
+            TimedCommitter tm = new TimedCommitter(kit, params, aliceKey, bobKey, secret);
 
-        SendRequest req = SendRequest.forTx(commitTx);
 
-        try {
-            kit.wallet().completeTx(req);
+            /**
+             * Commit phase
+             */
+            tm.commitPhase();
 
-            TransactionBroadcast txBroadcast = kit.peerGroup().broadcastTransaction(req.tx);
+            System.out.println("Enter choice:");
+            System.out.println("1: Alice opens the secret");
+            System.out.println("2: Bob redeems the deposit");
 
-            txBroadcast.future().get();
+            int choice = keyboard.nextInt();
 
-            final Sha256Hash commitTxhash = req.tx.getHash();
-            System.out.println("Alice sent commit transaction with hash " + req.tx.getHashAsString());
-            mineBlock();
-            while (req.tx.isPending()) {
+            switch (choice) {
+                case 1:
+
+                    /**
+                     * Open phase
+                     */
+                    tm.openPhase();
+                    break;
+
+                case 2:
+
+                    /**
+                     * PayDeposit phase
+                     */
+                    //TODO
+
             }
-            System.out.println("Transaction mined");
 
-            Transaction openTx = new Transaction(params);
-            openTx.addOutput(deposit, aliceKey);
-
-            openTx.addInput(commitTx.getOutput(0));
-
-            Sha256Hash openSigHash = openTx.hashForSignature(0, commitOutScript.getProgram(), Transaction.SigHash.ANYONECANPAY.byteValue());
-            ECKey.ECDSASignature openSignature = aliceKey.sign(openSigHash);
-
-            openTx.addInput(commitTxhash, 0, cm.getOpenInScript(SECRET, openSignature));
-
-            kit.peerGroup().broadcastTransaction(openTx);
-
-            mineBlock();
-            while (req.tx.isPending()) {
-            }
-            System.out.println("Transaction mined");
-
-            while (true);
-
-        } catch (InsufficientMoneyException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e1) {
-            e1.printStackTrace();
-        } catch (ExecutionException e2) {
-            e2.printStackTrace();
         }
-
 
     }
 
@@ -153,25 +134,18 @@ public class Main {
         }
     }
 
-    private static void mineBlock() {
 
-        try {
-            Runtime.getRuntime().exec("bitcoin-cli -regtest generate 1");
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void listenForNewTransactions(WalletAppKit kit){
+    private static void listenForNewTransactions(WalletAppKit kit) {
         kit.chain().addNewBestBlockListener(new NewBestBlockListener() {
             @Override
             public void notifyNewBestBlock(StoredBlock storedBlock) throws VerificationException {
                 System.out.println("New block received");
+
                 ListenableFuture<Block> futureBlock = kit.peerGroup().getDownloadPeer().getBlock(storedBlock.getHeader().getHash());
 
                 try {
                     Block b = futureBlock.get();
-                    for(Transaction t : b.getTransactions()){
+                    for (Transaction t : b.getTransactions()) {
                         System.out.println("Transaction " + t);
                     }
                 } catch (InterruptedException e) {
