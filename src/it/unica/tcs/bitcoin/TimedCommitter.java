@@ -18,6 +18,8 @@ import java.util.concurrent.ExecutionException;
  */
 public class TimedCommitter {
 
+    public static final Coin FEE = Coin.valueOf(50l);
+
     WalletAppKit kit;
     NetworkParameters params;
     ECKey aliceKey, bobKey;
@@ -98,7 +100,7 @@ public class TimedCommitter {
 
     public void openPhase() {
         Transaction openTx = new Transaction(params);
-        openTx.addOutput(deposit, aliceKey);
+        openTx.addOutput(deposit.subtract(FEE), aliceKey);
 
         TransactionInput input = openTx.addInput(commitTx.getOutput(0));
 
