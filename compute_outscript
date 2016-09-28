@@ -1,0 +1,57 @@
+//input
+SIGNATURE
+SECRET_A
+SECRET_B
+
+
+-----------------
+//controllo che i segreti corrispondano agli hash committati in precendenza
+OP_DUP 
+OP_TOALTSTACK 
+OP_HASH256
+SECRET_B_HASH
+OP_EQUALVERIFY
+
+OP_DUP 
+OP_TOALTSTACK 
+OP_HASH256
+SECRET_A_HASH
+OP_EQUALVERIFY
+
+------------------
+//recupero SECRET_A dall'altstack e ne calcolo la lunghezza
+
+OP_FROMALTSTACK
+OP_SIZE
+OP_NIP
+
+------------------
+//recupero SECRET_A dall'altstack e ne calcolo la lunghezza
+
+OP_FROMALTSTACK
+OP_SIZE
+OP_NIP
+
+----------------
+//calcolo il risultato della lotteria
+
+//vedo se la lunghezza dei due segreti è uguale
+OP_EQUAL
+
+OP_IF
+
+//se è uguale vince alice
+ALICE_PUBKEY
+OP_CHECKSIGVERIFY
+
+OP_ELSE
+
+//se è diversa vince bob
+BOB_PUBKEY
+OP_CHECKSIGVERIFY
+
+OP_ENDIF
+
+--------------
+//se tutti i verify sono passati la transazione è spendibile
+OP_TRUE
