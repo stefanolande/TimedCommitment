@@ -18,15 +18,15 @@ import java.util.concurrent.ExecutionException;
  */
 public class TimedCommitter {
 
-    public static final Coin FEE = Coin.valueOf(50l);
+    private static final Coin FEE = Coin.valueOf(50l);
 
-    WalletAppKit kit;
-    NetworkParameters params;
-    ECKey aliceKey, bobKey;
-    String secret;
+    private WalletAppKit kit;
+    private NetworkParameters params;
+    private ECKey aliceKey, bobKey;
+    private String secret;
 
-    Transaction commitTx;
-    Coin deposit = Coin.valueOf(2, 0);
+    private Transaction commitTx;
+    private Coin deposit = Coin.valueOf(2, 0);
 
 
     public TimedCommitter(WalletAppKit kit, NetworkParameters params, ECKey aliceKey, ECKey bobKey, String secret) {
@@ -77,9 +77,10 @@ public class TimedCommitter {
             txBroadcast.future().get();
 
             System.out.println("Alice sent commit transaction with hash " + req.tx.getHashAsString());
+
             mineBlock();
-            while (req.tx.isPending()) {
-            }
+            while (req.tx.isPending());
+
             System.out.println("Commit transaction mined");
             System.out.println("Bilancio: " + kit.wallet().getBalance().toFriendlyString());
 
@@ -87,11 +88,7 @@ public class TimedCommitter {
             //TODO
 
 
-        } catch (InsufficientMoneyException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InsufficientMoneyException | InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -116,9 +113,7 @@ public class TimedCommitter {
             System.out.println("Open transaction mined");
             System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }

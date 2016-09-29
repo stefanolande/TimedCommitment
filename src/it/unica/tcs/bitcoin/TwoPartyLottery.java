@@ -6,7 +6,6 @@ import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptOpCodes;
-import org.omg.CORBA.StringHolder;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -16,15 +15,15 @@ import java.util.concurrent.ExecutionException;
  */
 public class TwoPartyLottery {
 
-    WalletAppKit kit;
-    NetworkParameters params;
-    ECKey aliceKey, bobKey;
-    String aliceSecretHash, bobSecretHash;
+    private WalletAppKit kit;
+    private NetworkParameters params;
+    private ECKey aliceKey, bobKey;
+    private String aliceSecretHash, bobSecretHash;
 
-    Transaction computeTx;
-    Coin bet;
+    private Transaction computeTx;
+    private Coin bet;
 
-    public static final Coin FEE = Coin.valueOf(50l);
+    private static final Coin FEE = Coin.valueOf(50l);
 
 
     public TwoPartyLottery(WalletAppKit kit, NetworkParameters params, ECKey aliceKey, ECKey bobKey, String aliceSecretHash, String bobSecretHash) {
@@ -55,9 +54,7 @@ public class TwoPartyLottery {
             txBroadcast.future().get();
             System.out.println("Compute transaction mined");
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -82,9 +79,7 @@ public class TwoPartyLottery {
             System.out.println("Claim_Alice transaction mined");
             System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
@@ -109,9 +104,7 @@ public class TwoPartyLottery {
             System.out.println("Claim_Alice transaction mined");
             System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
 
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
