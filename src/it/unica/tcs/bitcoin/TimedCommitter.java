@@ -63,8 +63,8 @@ public class TimedCommitter {
     }
 
     public void commitPhase() {
-        Transaction commitTx = new Transaction(params);
-        Script commitOutScript = getCommitOutScript(secret, aliceKey, bobKey);
+        this.commitTx = new Transaction(params);
+        Script commitOutScript = getCommitOutScript();
         commitTx.addOutput(deposit, commitOutScript);
 
         SendRequest req = SendRequest.forTx(commitTx);
@@ -82,8 +82,6 @@ public class TimedCommitter {
             }
             System.out.println("Commit transaction mined");
             System.out.println("Bilancio: " + kit.wallet().getBalance().toFriendlyString());
-
-            this.commitTx = commitTx;
 
             //create the timelocked paydeposit
             //TODO
@@ -104,7 +102,7 @@ public class TimedCommitter {
 
         TransactionInput input = openTx.addInput(commitTx.getOutput(0));
 
-        Sha256Hash openSigHash = openTx.hashForSignature(0, getCommitOutScript(secret, aliceKey, bobKey).getProgram(), Transaction.SigHash.ALL.byteValue());
+        Sha256Hash openSigHash = openTx.hashForSignature(0, getCommitOutScript().getProgram(), Transaction.SigHash.ALL.byteValue());
         ECKey.ECDSASignature openSignature = aliceKey.sign(openSigHash);
 
         input.setScriptSig(getOpenInScript(secret, openSignature));
@@ -140,7 +138,7 @@ public class TimedCommitter {
 
     }
 
-    private Script getCommitOutScript(String secret, ECKey aliceKey, ECKey bobKey) {
+    private Script getCommitOutScript() {
 
 
         ScriptBuilder builder = new ScriptBuilder();

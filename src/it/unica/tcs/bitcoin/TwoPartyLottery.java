@@ -1,15 +1,15 @@
 package it.unica.tcs.bitcoin;
 
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.*;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptOpCodes;
 import org.omg.CORBA.StringHolder;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by stefano on 28/09/16.
@@ -21,8 +21,100 @@ public class TwoPartyLottery {
     ECKey aliceKey, bobKey;
     String aliceSecretHash, bobSecretHash;
 
-    Transaction commitTx;
-    Coin deposit = Coin.valueOf(2, 0);
+    Transaction computeTx;
+    Coin bet;
+
+    public static final Coin FEE = Coin.valueOf(50l);
+
+
+    public TwoPartyLottery(WalletAppKit kit, NetworkParameters params, ECKey aliceKey, ECKey bobKey, String aliceSecretHash, String bobSecretHash) {
+        this.kit = kit;
+        this.params = params;
+        this.aliceKey = aliceKey;
+        this.bobKey = bobKey;
+        this.aliceSecretHash = aliceSecretHash;
+        this.bobSecretHash = bobSecretHash;
+    }
+
+    public void computePhase(TransactionOutput aliceIn, TransactionOutput bobIn){
+
+        Coin bet = aliceIn.getValue().add(bobIn.getValue());
+
+        computeTx.addSignedInput(aliceIn, aliceKey);
+        computeTx.addSignedInput(bobIn, bobKey);
+
+        this.computeTx = new Transaction(params);
+        Script computeOutScript = getComputeOutScript();
+        computeTx.addOutput(bet, computeOutScript);
+
+        TransactionBroadcast txBroadcast = kit.peerGroup().broadcastTransaction(computeTx);
+
+        mineBlock();
+
+        try {
+            txBroadcast.future().get();
+            System.out.println("Compute transaction mined");
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void aliceClaims(String aliceSecret, String bobSecret){
+
+        Transaction claimTx = new Transaction(params);
+        claimTx.addOutput(bet.subtract(FEE), aliceKey);
+
+        TransactionInput input = claimTx.addInput(computeTx.getOutput(0));
+
+        Sha256Hash claimTxHash = claimTx.hashForSignature(0, getComputeOutScript().getProgram(), Transaction.SigHash.ALL.byteValue());
+        ECKey.ECDSASignature claimSignature = aliceKey.sign(claimTxHash);
+
+        input.setScriptSig(getClaimMoneyInScript(aliceSecret, bobSecret, claimSignature));
+
+        TransactionBroadcast txBroadcast = kit.peerGroup().broadcastTransaction(claimTx);
+        mineBlock();
+
+        try {
+            txBroadcast.future().get();
+            System.out.println("Claim_Alice transaction mined");
+            System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void bobClaims(String aliceSecret, String bobSecret){
+
+        Transaction claimTx = new Transaction(params);
+        claimTx.addOutput(bet.subtract(FEE), bobKey);
+
+        TransactionInput input = claimTx.addInput(computeTx.getOutput(0));
+
+        Sha256Hash claimTxHash = claimTx.hashForSignature(0, getComputeOutScript().getProgram(), Transaction.SigHash.ALL.byteValue());
+        ECKey.ECDSASignature claimSignature = bobKey.sign(claimTxHash);
+
+        input.setScriptSig(getClaimMoneyInScript(aliceSecret, bobSecret, claimSignature));
+
+        TransactionBroadcast txBroadcast = kit.peerGroup().broadcastTransaction(claimTx);
+        mineBlock();
+
+        try {
+            txBroadcast.future().get();
+            System.out.println("Claim_Alice transaction mined");
+            System.out.println("Balance: " + kit.wallet().getBalance().toFriendlyString());
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
 
     private Script getComputeOutScript() {
 
@@ -80,5 +172,14 @@ public class TwoPartyLottery {
         builder.data(secretB.getBytes());
 
         return builder.build();
+    }
+
+    private static void mineBlock() {
+
+        try {
+            Runtime.getRuntime().exec("bitcoin-cli -regtest generate 1");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
